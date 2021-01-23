@@ -56,10 +56,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   
   is_initialized = true;
 
-  std::cout << "x=" << x << std::endl;
-  std::cout << "y=" << y << std::endl;
-  std::cout << "debug state: initialize completed." << std::endl;
-  
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], 
@@ -75,6 +71,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   std_y         = std_pos[1];
   std_theta     = std_pos[2];
 
+  normal_distribution<double> dist_x(0, std_x);
+  normal_distribution<double> dist_y(0, std_y);
+  normal_distribution<double> dist_theta(0, std_theta); 
+
   for(int i=0; i<num_particles; ++i){
     double x_0     = particles[i].x;
     double y_0     = particles[i].y;
@@ -86,7 +86,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
     if(fabs(yaw_rate)<0.0001){
       x_f = x_0 + velocity * cos(theta_0) * delta_t;
-      x_f = x_0 + velocity * sin(theta_0) * delta_t;
+      y_f = y_0 + velocity * sin(theta_0) * delta_t;
       theta_f = theta_0;
     }else{
       x_f = x_0 + (velocity/yaw_rate) * (sin(theta_0 + (yaw_rate*delta_t)) - sin(theta_0));
@@ -94,37 +94,32 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
       theta_f = theta_0 + (yaw_rate*delta_t);
     }
 
-	  normal_distribution<double> dist_x(x_f, std_x);
-	  normal_distribution<double> dist_y(y_f, std_y);
-	  normal_distribution<double> dist_theta(theta_f, std_theta);  
-
-    particles[i].x     = dist_x(gen);
-	  particles[i].y     = dist_y(gen);
-	  particles[i].theta = dist_theta(gen);
+	particles[i].x     = x_f     + dist_x(gen);
+	particles[i].y     = y_f     + dist_y(gen);
+	particles[i].theta = theta_f + dist_theta(gen);
 
   }
-  std::cout << "debug state: prediction completed." << std::endl;
 }
 
 void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, 
                                      vector<LandmarkObs>& observations) {
 
-  for (size_t i = 0; i < observations.size(); i++) {
+  for (size_t i = 0; i < observations.size(); ++i) {
     double obs_x = observations[i].x;
     double obs_y = observations[i].y;
 
-    // Initialize the minimum distance
+    // Initialize the minimum distance And the Map ID
     double min_dist = std::numeric_limits<double>::max();
-    int map_id;
+    int    map_id   = -1;
     
-    for (size_t j = 0; j < predicted.size(); j++) {
-      double p_x = predicted[i].x;
-      double p_y = predicted[i].y;
+    for (size_t j = 0; j < predicted.size(); ++j) {
+      double p_x = predicted[j].x;
+      double p_y = predicted[j].y;
       double cur_dist = dist(obs_x, obs_y, p_x, p_y);
 
       if (cur_dist < min_dist) {
         min_dist = cur_dist;
-        map_id = predicted[i].id;
+        map_id = predicted[j].id;
       }
     }
     observations[i].id = map_id;
@@ -148,8 +143,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     // to the MAP'S coordinate system.
     for(size_t j=0; j<observations.size(); ++j){
       LandmarkObs obs;
-      obs.x = p_x + (cos(p_theta) * observations[j].x) - (sin(p_theta) * observations[j].y);
-      obs.y = p_y + (sin(p_theta) * observations[j].x) + (cos(p_theta) * observations[j].y);
+      obs.x  = p_x + (cos(p_theta) * observations[j].x) - (sin(p_theta) * observations[j].y);
+      obs.y  = p_y + (sin(p_theta) * observations[j].x) + (cos(p_theta) * observations[j].y);
+	  obs.id = -1;
       map_coordinate_obs.push_back(obs);
     }
 
@@ -201,7 +197,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       particles[i].weight *= weight;
     }
     weight_normalizer += particles[i].weight;
-  } 
+  }
+
   //Normalize the weights of all particles
   for (size_t i=0; i<particles.size(); ++i) {
     particles[i].weight /= weight_normalizer;
@@ -228,6 +225,7 @@ void ParticleFilter::resample() {
       new_particles[i]=particles[index];
   }
   particles = new_particles;
+
 }
 
 void ParticleFilter::SetAssociations(Particle& particle, 
