@@ -14,9 +14,8 @@ In this project you will implement a 2 dimensional particle filter in C++. Your 
 
 ## Using Library
 ---
-- [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)  
-  Template header library for matrices,vectors,etc.
-  Already included in the src folder.
+- [JSON for Modern C++](https://github.com/nlohmann/json)  
+  Template header library for connecting in JSON format
 
 - [uWebSockets](https://github.com/uNetworking/uWebSockets)  
   This is dynamic library for communicating with Term2.
